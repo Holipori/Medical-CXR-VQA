@@ -443,7 +443,7 @@ def process_d_d(d_d):
         names += name.split(';')
     names = set(names)
 
-    path = 'lib/entity_dict.json'
+    path = 'data/entity_dict.json'
     d_entity_fre = json.load(open(path, 'r'))
     for name in tqdm(list(d_entity_fre.keys()), total= len(d_entity_fre.keys())):
         if name == "":
@@ -467,13 +467,13 @@ def process_d_d(d_d):
             new_row = [d_d.shape[0], name,name, location]
             d_d.loc[len(d_d)] = new_row
     # save d_d
-    d_d.to_csv('lib/disease_lib_llm_full.csv', index=False)
+    d_d.to_csv('data/disease_lib_llm_full.csv', index=False)
 
-    path = 'lib/type_dict.json'
+    path = 'data/type_dict.json'
     d_type_fre = json.load(open(path, 'r'))
-    path = 'lib/level_dict.json'
+    path = 'data/level_dict.json'
     d_level_fre = json.load(open(path, 'r'))
-    path = 'lib/location_dict.json'
+    path = 'data/location_dict.json'
     d_location_fre = json.load(open(path, 'r'))
 
 def process_other_dict(d_lev, d_loc, d_t):
@@ -496,7 +496,7 @@ def initial_library(llm_keywords = False):
     global d_d, d_lev, d_loc, d_t, d_ploc, phrases_list, phrases_list_post, df,dc, skip_words_for_abnormality_questions, len_dd_ori, fre_threshold
     skip_words_for_abnormality_questions = ['abnormality', 'abnormalities', 'disease', 'diseases', 'findings',
                                             'finding', 'impression', 'impressions', 'deformity']
-    path = 'lib/disease_lib_llm.csv'
+    path = 'data/disease_lib_llm.csv'
     d_d = pd.read_csv(path)
     len_dd_ori = len(d_d)
 
@@ -508,15 +508,15 @@ def initial_library(llm_keywords = False):
 
 
 
-    path_lev = 'lib/level_lib.csv'
+    path_lev = 'data/level_lib.csv'
     d_lev = pd.read_csv(path_lev)
-    path_loc = 'lib/location_lib.csv'
+    path_loc = 'data/location_lib.csv'
     d_loc = pd.read_csv(path_loc)
-    path_t = 'lib/type_lib.csv'
+    path_t = 'data/type_lib.csv'
     d_t = pd.read_csv(path_t)
-    path_ploc = 'lib/postlocation_lib.csv'
+    path_ploc = 'data/postlocation_lib.csv'
     d_ploc = pd.read_csv(path_ploc)
-    path_change = 'lib/position_change.csv'
+    path_change = 'data/position_change.csv'
     dc = pd.read_csv(path_change)
 
     if llm_keywords:
@@ -626,7 +626,7 @@ def gen_disease_json(llm_keywords = False, print_test = False, stop=False, save=
         # break
 
     if save:
-        disease_path = 'output/all_diseases_rule_with_llm_keywords.json'
+        disease_path = 'data/all_diseases_rule_with_llm_keywords.json'
         with open(disease_path,'w') as f:
             json.dump(final_diseases,f, indent=4)
 
@@ -1313,8 +1313,6 @@ def question_gen(path, less_yes_no=False, small_sample=False, filter_low_freq=Fa
     np.random.seed(0)
     print('question gen')
     initial_library()
-    # path = '../data/question_gen/datasets/all_diseases.json'
-    # path = '/home/xinyue/chatgpt/output/all_diseases_final.json'
     global question_set
     question_set = create_question_set()
     questions = []
@@ -1349,11 +1347,11 @@ def question_gen(path, less_yes_no=False, small_sample=False, filter_low_freq=Fa
 
     pd_pair_questions = pd.DataFrame(pair_questions)
     if less_yes_no:
-        name = 'output/mimic_llm_questions_lessYesNo.csv'
+        name = 'data/mimic_llm_questions_lessYesNo.csv'
     elif filter_low_freq:
-        name = 'output/mimic_llm_questions_filter_low_freq.csv'
+        name = 'data/mimic_llm_questions_filter_low_freq.csv'
     else:
-        name = 'output/mimic_llm_questions_full.csv'
+        name = 'data/mimic_llm_questions_full.csv'
     if small_sample:
         name = name.replace('.csv', '_small.csv')
     pd_pair_questions.to_csv(name, index=False)
@@ -1365,7 +1363,7 @@ def adding(pair, x):
 
 
 def statistic():
-    path = '../data/question_gen/datasets/mimic_pair_questions.csv'
+    path = 'data/medical-cxr-vqa-questions.csv'
     d = pd.read_csv(path)
     print('len',len(set(d['subject_id'])))
     types = ['abnormality','presence','view','location','level','type']
@@ -1399,7 +1397,7 @@ def statistic():
     print('answer set length', len(answer_set))
 
 def save_h5(questions, answers, pos, label_start_idx, label_end_idx, feature_idx,max_seq = 60, times=0, length = 100):
-    filename = os.path.join('output/VQA_mimic_llm_dataset.h5')
+    filename = os.path.join('data/VQA_mimic_llm_dataset.h5')
     if times == 0:
         h5f = h5py.File(filename, 'w')
         questions_dataset = h5f.create_dataset("questions", (length, 20),
@@ -1485,11 +1483,11 @@ def process(list, diseases_list, mode = 'strict'):
 
 
 def save_coco_format():
-    path_splits = 'output/splits_mimic_llm_VQA.json'
+    path_splits = 'data/splits_mimic_llm_VQA.json'
     with open(path_splits, 'r')as f:
         splits = json.load(f)
 
-    path = 'output/mimic_llm_questions.csv'
+    path = 'data/mimic_llm_questions.csv'
     df = pd.read_csv(path)
     anno_list= []
     image_list = []
@@ -1521,7 +1519,7 @@ def save_coco_format():
 
 
 
-        json.dump(dict, open('output/mimic_llm_gt_captions_%s.json'%name, 'w'))
+        json.dump(dict, open('data/mimic_llm_gt_captions_%s.json'%name, 'w'))
         image_list = []
         anno_list = []
         print('saved')
@@ -1632,7 +1630,7 @@ def find_best_paragraph(study_ids = None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json_path", type=str, default='output/all_diseases_final.json', help="path to the all key information json")
+    parser.add_argument("--json_path", type=str, default='data/all_diseases_final.json', help="path to the all key information json")
     args = parser.parse_args()
 
     question_gen(args.json_path, less_yes_no=False, small_sample=False, filter_low_freq=True) # generate question csv
