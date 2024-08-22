@@ -1,6 +1,6 @@
 # Medical-CXR-VQA
 
-Medical-CXR-VQA is an LLM-constructed large-scale chest x-ray dataset for the medical visual question answering task. This repository provides the code (currently being organized) for generating the Medical-CXR-VQA dataset, as proposed in our paper, "**Interpretable medical image Visual Question Answering via multi-modal relationship graph learning**."
+Medical-CXR-VQA is an LLM-constructed large-scale chest x-ray dataset for the medical visual question answering task. This repository provides the code for generating the Medical-CXR-VQA dataset, as proposed in our paper, "**Interpretable medical image Visual Question Answering via multi-modal relationship graph learning**."
 
 For more information about the dataset and the method, please refer to our [paper](https://authors.elsevier.com/sd/article/S1361-8415(24)00204-4).
 
@@ -46,7 +46,7 @@ After downloading from Physionet, put below files into `code/data`.
 ### 1. (Optional) prepare 100 training data.
 This step can be skipped because we will provide the annotated golden set for fine-tuning Llama2. The code for this step is still provided here for reference.
 
-The generated `all_diseases_gpt4_100.json` will be provided.
+The generated `all_diseases_gpt4_100.json` is provided in Physionet dataset.
 
 #### 1-1 Prerequisite
 1. [Azure OpenAI Service](https://azure.microsoft.com/en-us/products/ai-services/openai-service) access
