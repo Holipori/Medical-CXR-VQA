@@ -2,7 +2,6 @@
 import json
 import os
 import nltk
-import spacy
 import pandas as pd
 import re
 import numpy as np
@@ -54,111 +53,6 @@ def find_report(study_id):
     report.replace('\n', '').replace('FINDINGS', '\nFINDINGS').replace('IMPRESSION', '\nIMPRESSION')
     return report
 
-def sub_find_attribute(re_searched, all_prep_words,anchor, dict_attributes, print_test):
-    if re_searched is not None:
-        text_pre = re_searched.group(1).strip()
-        if anchor in text_pre:
-            re_searched2 = re.search('(.*)' + anchor + '(.*)', text_pre, re.I)
-            dict_attributes =  sub_find_attribute(re_searched2, all_prep_words, anchor, dict_attributes, print_test)
-            text_pre = re_searched2.group(2).strip()
-        if text_pre.split(' ')[-1] in all_prep_words:
-            text_pre = ''
-        while check_any_in(all_prep_words, text_pre):
-            re_searched2 = re.search('(in|of|with) (.*)', text_pre, re.I)
-            if re_searched2 is not None:
-                text_pre = re_searched2.group(2)
-            else:
-                break
-
-
-        if check_any_in(phrases_list, text_pre):
-            phrase = check_any_in(phrases_list, text_pre)
-            text_list = [phrase]
-            rest_list = text_pre.split(phrase)
-            for text in rest_list:
-                if text != '':
-                    text_list += text.strip().split(' ')
-        else:
-            text_list = text_pre.strip().split(' ')[-5:]
-
-
-        for word in text_list:
-            if word == '':
-                continue
-            if len(d_loc[d_loc['location'] == word].values) != 0:
-                if dict_attributes[anchor]['location'] == None:
-                    dict_attributes[anchor]['location'] = [word]
-                else:
-                    if word not in dict_attributes[anchor]['location']:
-                        dict_attributes[anchor]['location'].append(word)
-                if print_test:
-                    print('location:', word)
-            elif len(d_t[d_t['type'] == word].values) != 0:
-                if dict_attributes[anchor]['type'] == None:
-                    dict_attributes[anchor]['type'] = [word]
-                else:
-                    if word not in dict_attributes[anchor]['type']:
-                        dict_attributes[anchor]['type'].append(word)
-                if print_test:
-                    print('type:', word)
-            elif len(d_lev[d_lev['level'] == word].values) != 0:
-                if dict_attributes[anchor]['level'] == None:
-                    dict_attributes[anchor]['level'] = [word]
-                else:
-                    if word not in dict_attributes[anchor]['level']:
-                        dict_attributes[anchor]['level'].append(word)
-                if print_test:
-                    print('level:', word)
-            else:
-                # if word == 'silar' or word == ' ':
-                #     print('a')
-                if print_test:
-                    print('pre:', word)
-    return dict_attributes
-
-def find_pre_attribute(match_words, prep, text,dict_attributes, print_test):
-    re_searched = re.search('(.*) ' + match_words[0], text, re.I)
-    dict_attributes = sub_find_attribute(re_searched, prep, match_words[0], dict_attributes, print_test)
-    for i in range(len(match_words) - 1):
-        if print_test:
-            print(' ')
-        word1 = match_words[i]
-        word2 = match_words[i + 1]
-        re_searched = re.search(word1 + '(.*)' + word2, text, re.I)
-        # if 'suggest' in re_searched.group(1):
-        #     print('suggest:', word1, word2)
-        dict_attributes = sub_find_attribute(re_searched, prep,match_words[i+1], dict_attributes, print_test)
-    return dict_attributes
-def find_post_attribute(match_words, text, dict_attributes, print_test):
-    keyword = ['in the', 'at the', 'seen']
-
-    resolved_words = ['has resolved', 'have resolved']
-    new_match_words = [] # in case some disease has been resolved
-    for i in range(len(match_words)):
-        word1 = match_words[i]
-        if i +1 < len(match_words):
-            word2 = match_words[i+1]
-            re_searched = re.search(word1 + '(.*)' + word2, text, re.I)
-        else:
-            re_searched = re.search(word1 + '(.*)', text, re.I)
-        text_post = re_searched.group(1).strip() if re_searched is not None else ''
-
-        if check_any_in(resolved_words, text_post):
-            del dict_attributes[word1]
-            continue
-        else:
-            new_match_words.append(word1)
-
-        if check_any_in(keyword,text_post):
-            phrase = check_any_in(phrases_list_post, text_post)
-            if phrase:
-                dict_attributes[word1]['post_location'] = phrase
-                if print_test:
-                    print('post_location:', phrase)
-            else:
-                if print_test:
-                    print('post:',text_post)
-    return new_match_words, dict_attributes
 
 
 def create_empty_attributes(match_words):
@@ -167,15 +61,7 @@ def create_empty_attributes(match_words):
         dict[word] = {'entity_name':word, 'location': None, 'type': None, 'level': None, 'post_location':None, 'location2':None, 'type2':None, 'level2':None, 'post_location2':None}
     return dict
 
-def find_attribute(match_words,text, print_test):
-    prep = ['and', 'in', 'of', 'with']
-    dict_attributes = create_empty_attributes(match_words)
-    if len(match_words) == 0:
-        return dict_attributes
-    match_words, dict_attributes = find_post_attribute(match_words, text, dict_attributes, print_test)
-    if len(match_words)> 0:
-        dict_attributes = find_pre_attribute(match_words, prep, text,dict_attributes, print_test)#main
-    return dict_attributes
+
 
 def reorder(match_words, indexes, text):
     # make sure the oder in match_words is corresponding to the original text
@@ -211,89 +97,6 @@ def fix_order(dict_attributes):
     return new_dict
 
 
-def process_core(text_core, nlp,print_test, uniform_name= False, fixed_order=False):
-
-    if print_test:
-        doc = nlp(text_core)
-        print('ref_entity:', doc.ents)
-
-    #by_match
-    yes_id = set()
-    match_out = []
-    location = []
-    mix_out= []
-    indexes = []
-
-
-    # faster version
-    candidatas = []
-    for word in text_core.split(' '):
-        if word in df['report_name'].values:
-            candidatas.append(word)
-    for word in candidatas:
-        if word in text_core:
-            id = df[df['report_name'] == word]['id'].values[0]
-            if id not in yes_id:
-                yes_id.add(id)
-                match_out.append(word)
-                match_out, indexes = reorder(match_out, indexes, text_core)
-
-    ## original version
-    # for i in range(len(df)):
-    #     name = df.iloc[i]['report_name']
-    #     # if
-    #     if df.iloc[i]['report_name'] in text_core:
-    #         id = df.iloc[i]['id']
-    #         if id not in yes_id:
-    #             yes_id.add(id)
-    #             match_out.append(df.iloc[i]['report_name'])
-    #             match_out, indexes = reorder(match_out, indexes, text_core)
-    dict_attributes = find_attribute(match_out, text_core, print_test)
-    if uniform_name:
-        ori_dict = dict_attributes
-        dict_attributes = {}
-        for key in ori_dict:
-            id = df[df['report_name'] == key]['id'].values[0]
-            new_name = d_d[d_d['id'] == id]['official_name'].values[0]
-            ori_dict[key]['entity_name'] = new_name
-            dict_attributes[new_name] = ori_dict[key]
-    if fixed_order:
-        dict_attributes = fix_order(dict_attributes)
-    if print_test:
-        print('match_way: ', ', '.join(match_out))
-
-    if print_test:
-        missed = []
-        for ent in doc.ents:
-            if ent.text not in ' '.join(match_out):
-                missed.append(ent.text)
-        if missed!= []:
-            print('missed:', ', '.join(missed))
-
-
-        tokened_s = nltk.word_tokenize(text_core)
-        pos = nltk.pos_tag(tokened_s)
-        chanageset = {'layering', 'right', 'small', 'minimal', 'left', 'of'}
-        for i in range(len(pos)):
-            p = pos[i]
-            if p[0] in chanageset:
-                pos[i] = (p[0], 'RB')
-        # print(result)
-        out = ''
-        outpos = []
-        skipset = {'VB', 'IN', 'CC', 'VBD', 'VBG', 'VBP', 'VBZ'}
-        for j in range(len(tokened_s)):
-            if pos[j][1] in skipset or tokened_s[j] == ',' or tokened_s[j] == '.' or tokened_s[j] == '//':
-                break
-            out += tokened_s[j] + ' '
-            outpos.append(pos[j])
-        # if out != '':
-        print('ref_nltk_way: ', out)
-        # if out == 'right ' or out == 'areas ' or out == 'left ' or out == 'small ' or out == 'to ':
-        #     print(s)
-        #     print(pos)
-    return dict_attributes
-
 def check_matches(entities1, entities2):
     # remove the entities that are in the other
     for e1 in entities1:
@@ -304,20 +107,6 @@ def check_matches(entities1, entities2):
             # if e1.text == e2.text:
             #     return True
 
-def replace_location_words(attributes):
-    for key in attributes:
-        if attributes[key]['location'] is not None:
-            location = ' '.join(attributes[key]['location'])
-            for j in range(len(dc)):
-                location = location.replace(dc.iloc[j]['from'], dc.iloc[j]['to'])
-            attributes[key]['location'] = location.split(' ')
-
-        if attributes[key]['post_location'] is not None:
-            location = attributes[key]['post_location']
-            for j in range(len(dc)):
-                location = location.replace(dc.iloc[j]['from'], dc.iloc[j]['to'])
-            attributes[key]['post_location'] = location
-    return attributes
 
 def find_better_attributes(file_attributes, sent_attributes):
     file_score = 0
@@ -354,77 +143,6 @@ def add_new_instance(one_file_attributes, one_sent_attributes):
                 one_file_attributes[key] = the_one_to_keep
     return one_file_attributes
 
-def find_general(sentences, nlp, print_test, uniform_name, fixed_order):
-    one_file_positives = []
-    one_file_negatives = []
-    for s in sentences:
-        s = s.lower()
-        if print_test:
-            print(' ')
-            print(s)
-        text_core = s.replace('     ', ' ').replace('    ', ' ').replace('   ', ' ').replace('  ', ' ')
-        text_no = ''
-
-        # definately no
-        if 'no longer' in text_core or ('resolved' in text_core and 'not resolved' not in text_core) or ('disappeared' in text_core and 'not disappeared' not in text_core):
-            text_no = text_core
-            text_core = ''
-        elif re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I) is not None:
-            re_searched = re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I)
-            text_core = re_searched.group(1)
-            text_no = re_searched.group(3) + ' ' + text_no
-            if re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I) is not None:
-                re_searched2 = re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I)
-                text_core = re_searched2.group(1)
-                text_no2 = re_searched2.group(3)
-                text_no = text_no2 + ' ' + text_no
-                if re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I) is not None:
-                    re_searched3 = re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I)
-                    text_core = re_searched3.group(1)
-                    text_no3 = re_searched3.group(3)
-                    text_no = text_no3 + ' ' + text_no
-                    if re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I) is not None:
-                        re_searched4 = re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text_core, re.I)
-                        text_core = re_searched4.group(1)
-                        text_no4 = re_searched4.group(3)
-                        text_no = text_no4 + ' ' + text_no
-            if 'change in' in text_no:
-                text_core = text_core + ' ' + text_no
-                text_no = ''
-        if text_no != '':
-            no_out = process_core(text_no, nlp,print_test, uniform_name, fixed_order)
-            for key in no_out:
-                if one_file_negatives == []:
-                    one_file_negatives = [key]
-                else:
-                    one_file_negatives.append(key)
-            if print_test:
-                print('no out:', no_out)
-
-        one_sent_attributes = process_core(text_core, nlp,print_test, uniform_name, fixed_order)
-        one_sent_attributes = replace_location_words(one_sent_attributes)
-        if 'heart size is enlarged' in one_sent_attributes:
-            one_sent_attributes['cardiomegaly'] = one_sent_attributes['heart size is enlarged']
-            one_sent_attributes['cardiomegaly']['entity_name'] = 'cardiomegaly'
-            one_sent_attributes.pop('heart size is enlarged')
-        if not fixed_order:
-            one_file_negatives = check_matches(one_file_negatives, one_sent_attributes)
-        else:
-            for key in one_file_negatives:
-                if key in one_sent_attributes:
-                    one_sent_attributes.pop(key)
-        if one_file_positives == []:
-            one_file_positives = one_sent_attributes
-        else:
-            one_file_positives = add_new_instance(one_file_positives, one_sent_attributes)
-
-        # transfrom structure
-    #     out = []
-    #     for k in one_file_positives:
-    #         out.append(one_file_positives[k])
-    # return out
-    return one_file_positives, one_file_negatives
-
 def process_postlocation(d_ploc, dc):
     for i in range(len(d_ploc)):
         text = d_ploc.iloc[i]['post_location']
@@ -443,7 +161,7 @@ def process_d_d(d_d):
         names += name.split(';')
     names = set(names)
 
-    path = 'data/entity_dict.json'
+    path = 'libs/entity_dict.json'
     d_entity_fre = json.load(open(path, 'r'))
     for name in tqdm(list(d_entity_fre.keys()), total= len(d_entity_fre.keys())):
         if name == "":
@@ -469,11 +187,11 @@ def process_d_d(d_d):
     # save d_d
     d_d.to_csv('data/disease_lib_llm_full.csv', index=False)
 
-    path = 'data/type_dict.json'
+    path = 'libs/type_dict.json'
     d_type_fre = json.load(open(path, 'r'))
-    path = 'data/level_dict.json'
+    path = 'libs/level_dict.json'
     d_level_fre = json.load(open(path, 'r'))
-    path = 'data/location_dict.json'
+    path = 'libs/location_dict.json'
     d_location_fre = json.load(open(path, 'r'))
 
 def process_other_dict(d_lev, d_loc, d_t):
@@ -496,7 +214,7 @@ def initial_library(llm_keywords = False):
     global d_d, d_lev, d_loc, d_t, d_ploc, phrases_list, phrases_list_post, df,dc, skip_words_for_abnormality_questions, len_dd_ori, fre_threshold
     skip_words_for_abnormality_questions = ['abnormality', 'abnormalities', 'disease', 'diseases', 'findings',
                                             'finding', 'impression', 'impressions', 'deformity']
-    path = 'data/disease_lib_llm.csv'
+    path = 'libs/disease_lib_llm.csv'
     d_d = pd.read_csv(path)
     len_dd_ori = len(d_d)
 
@@ -508,15 +226,15 @@ def initial_library(llm_keywords = False):
 
 
 
-    path_lev = 'data/level_lib.csv'
+    path_lev = 'libs/level_lib.csv'
     d_lev = pd.read_csv(path_lev)
-    path_loc = 'data/location_lib.csv'
+    path_loc = 'libs/location_lib.csv'
     d_loc = pd.read_csv(path_loc)
     path_t = 'data/type_lib.csv'
     d_t = pd.read_csv(path_t)
-    path_ploc = 'data/postlocation_lib.csv'
+    path_ploc = 'libs/postlocation_lib.csv'
     d_ploc = pd.read_csv(path_ploc)
-    path_change = 'data/position_change.csv'
+    path_change = 'libs/position_change.csv'
     dc = pd.read_csv(path_change)
 
     if llm_keywords:
@@ -541,95 +259,6 @@ def initial_library(llm_keywords = False):
 
 
 
-def test_extract_report(study_id):
-    '''
-    extract json KeyInfo data from the report
-    '''
-    initial_library()
-    nlp = spacy.load("en_ner_bc5cdr_md")
-
-    path_all = '/home/xinyue/dataset/mimic/mimic_all.csv'
-    df_all = pd.read_csv(path_all)
-    subject_id = df_all[df_all['study_id']==study_id]['subject_id'].values[0]
-
-    path = '/home/xinyue/dataset/mimic_reports'
-    fold1 = 'p' + str(subject_id)[:2]
-    fold2 = 'p' + str(subject_id)
-    file_name = 's%s.txt' % str(study_id)
-    file_path = os.path.join(path, fold1, fold2, file_name)
-    with open(file_path, 'r') as f:
-        ori_text = f.read()
-    lib = []
-    if 'FINDINGS:' in ori_text:
-        text = ori_text[ori_text.find('FINDINGS:'):]
-    elif 'IMPRESSION:' in ori_text:
-        text = ori_text[ori_text.find('IMPRESSION:'):]
-    t = text
-    t = t.replace('\n', ' ')
-    lib = lib + t.split('.')
-
-    print('report:',ori_text)
-
-    out, no_out = find_general(lib, nlp, print_test=False, uniform_name=True, fixed_order=True)
-
-def gen_disease_json(llm_keywords = False, print_test = False, stop=False, save=True, uniform_name=True, fixed_order=True):
-    '''
-    this function is used to generate the keyInfo data for each report. The keyInfo data is then used to generate questions.
-    '''
-    initial_library(llm_keywords)
-    nlp = spacy.load("en_ner_bc5cdr_md")
-
-    path = '/home/xinyue/dataset/mimic_reports'
-    p1 = os.listdir(path)
-    final_diseases = []
-
-    for fold1 in p1:
-        print(fold1)
-        if fold1[0] != 'p':
-            continue
-        path2 = os.path.join(path,fold1)
-        p2 = os.listdir(path2)
-        for i in tqdm(range(len(p2))):
-            fold2 = p2[i]
-            path3 = os.path.join(path2,fold2)
-            files = os.listdir(path3)
-            for file in files:
-                with open(os.path.join(path3, file), 'r') as f:
-                    record = {}
-                    record['study_id'] = file[1:-4]
-                    record['subject_id'] = fold2[1:]
-                    t = file[:-4] + '\n'
-                    text = f.read()
-                    lib = []
-                    if 'FINDINGS:' in text:
-                        text = text[text.find('FINDINGS:'):]
-                    elif 'IMPRESSION:'in text:
-                        text = text[text.find('IMPRESSION:'):]
-                    t += text
-                    t = t.replace('\n', ' ')
-                    lib = lib + t.split('.')
-
-                    out, no_out = find_general(lib,nlp,print_test, uniform_name, fixed_order)
-                    record['entity'] = out
-                    record['no_entity'] = no_out
-                    if print_test:
-                        print('final out:',out)
-                        print('final noout:',no_out)
-                    final_diseases.append(record)
-
-                # if stop:
-                #     break
-            # if stop:
-            #     break
-        if stop:
-            break
-        # break
-
-    if save:
-        disease_path = 'data/all_diseases_rule_with_llm_keywords.json'
-        with open(disease_path,'w') as f:
-            json.dump(final_diseases,f, indent=4)
-
 def if_positive_entity(entity, text):
     # determine if the entity is negative
     negative_part = re.search('(.*) (without|no |clear of|r/o |rule out|less likely)(.*)', text, re.I)
@@ -644,93 +273,7 @@ def if_positive_entity(entity, text):
     else:
         return False
 
-def find_keywords_in_report(keyword, background_words = None, no_keyword=None):
-    '''
-    importance score: the ratio of the number of times the keyword appears in the report to the number of the total reports.
-    inference score: keyword_num( in the report with background words) / background_num
-    correlation score: background_num( in the report with keywords)  / keyword_num
-    '''
 
-
-    path = '/home/xinyue/dataset/mimic_reports'
-    p1 = os.listdir(path)
-    final_diseases = []
-
-
-    background_num = 0
-    keyword_num= 0
-    inf_nume = 0
-    cor_nume = 0
-    total_num = 0
-    for fold1 in p1:
-        print(fold1)
-        if fold1[0] != 'p':
-            continue
-        path2 = os.path.join(path,fold1)
-        p2 = os.listdir(path2)
-        for i in tqdm(range(len(p2))):
-            fold2 = p2[i]
-            path3 = os.path.join(path2,fold2)
-            files = os.listdir(path3)
-            for file in files:
-                background_found = False
-                keyword_found = False
-                total_num += 1
-                with open(os.path.join(path3, file), 'r') as f:
-                    record = {}
-                    record['study_id'] = file[1:-4]
-                    record['subject_id'] = fold2[1:]
-                    t = file[:-4] + '\n'
-                    ori_text = f.read()
-                    lib = []
-                    if 'FINDINGS:' in ori_text:
-                        text = ori_text[ori_text.find('FINDINGS:'):]
-                    elif 'IMPRESSION:'in ori_text:
-                        text = ori_text[ori_text.find('IMPRESSION:'):]
-                    else:
-                        text = ori_text
-                    t += text
-                    t = t.replace('\n', ' ')
-                    lib = lib + t.split('.')
-
-
-                    if background_words is not None:
-                        for l in lib:
-                            if any([if_positive_entity(b,l) for b in background_words]):
-                                background_num += 1
-                                background_found = True
-                                break
-
-
-
-                    for l in lib:
-                        if any([if_positive_entity(k,l) for k in keyword]):
-                            if no_keyword is not None:
-                                if no_keyword in l:
-                                    continue
-                            keyword_num += 1
-                            keyword_found = True
-                            break
-
-                    if background_found and keyword_found:
-                        inf_nume += 1
-                        cor_nume += 1
-
-                    if background_found or keyword_found:
-                        print('subject_id:', fold2[1:], 'study_id:', file[1:-4])
-                        print(t)
-                        print('importance score:%.4f'% (keyword_num/total_num))
-                        if background_num != 0 and background_words is not None:
-                            print("keyword inference score:%.4f"% (inf_nume/background_num))
-                        if keyword_num != 0 and background_words is not None:
-                            print("keyword correlation score:%.4f"% (cor_nume/keyword_num))
-                        print('\n\n\n')
-
-
-def post_process_record(out, no_out,record):
-    record['entity'] = out
-    record['no_entity'] = no_out
-    return record
 
 
 
@@ -1482,155 +1025,11 @@ def process(list, diseases_list, mode = 'strict'):
     return out
 
 
-def save_coco_format():
-    path_splits = 'data/splits_mimic_llm_VQA.json'
-    with open(path_splits, 'r')as f:
-        splits = json.load(f)
 
-    path = 'data/mimic_llm_questions.csv'
-    df = pd.read_csv(path)
-    anno_list= []
-    image_list = []
-    for name in ['train','val','test']:
-        split = splits[name]
-        for index in split:
-        # for i in range(len(df_caption['captionAB'])):
-            anno_record = {}
-            image_record = {}
-            try:
-                anno_record['id'] = str(index)
-                anno_record['image_id'] = str(index) # important
-                anno_record['category_id'] = 0
-                anno_record['caption'] = df['answer'][index]
-                anno_record['question'] = df['question'][index]
-
-                image_record['id'] = str(index)
-
-                anno_list.append(anno_record)
-                image_list.append(image_record)
-            except:
-                break
-        dict ={}
-        dict['info'] = []
-        dict['licenses'] = []
-        dict['categories'] = []
-        dict['images'] = image_list
-        dict['annotations'] = anno_list
-
-
-
-        json.dump(dict, open('data/mimic_llm_gt_captions_%s.json'%name, 'w'))
-        image_list = []
-        anno_list = []
-        print('saved')
-
-def contains_number(string):
-    return any(char.isdigit() for char in string)
-
-def are_capitals(string):
-    for char in string:
-        if char.isalpha() and not char.isupper():
-            return False
-    return True
-
-def find_section_words():
-    # this way has been approved not good. abandoned
-    path_all = '/home/xinyue/dataset/mimic/mimic_all.csv'
-    df_all = pd.read_csv(path_all)
-    study_ids = df_all['study_id'].values
-
-    lib = set()
-    for study_id in tqdm(study_ids):
-        subject_id = df_all[df_all['study_id'] == study_id]['subject_id'].values[0]
-
-        path = '/home/xinyue/dataset/mimic_reports'
-        fold1 = 'p' + str(subject_id)[:2]
-        fold2 = 'p' + str(subject_id)
-        file_name = 's%s.txt' % str(study_id)
-        file_path = os.path.join(path, fold1, fold2, file_name)
-        with open(file_path, 'r') as f:
-            ori_text = f.read()
-        # if 'FINDINGS:' in ori_text:
-        #     text = ori_text[ori_text.find('FINDINGS:'):]
-        # elif 'IMPRESSION:' in ori_text:
-        #     text = ori_text[ori_text.find('IMPRESSION:'):]
-        ts = ori_text.split('\n')
-        for t in ts:
-            t = t.strip()
-            if ':' in t:
-                word = t[:t.find(':')]
-                if word not in lib:
-                    if contains_number(word) or not are_capitals(word):
-                        continue
-                    print('report for %s:'%(word[:-1]), ori_text)
-                    lib.add(word)
-                # if word[-1:] == ':':
-                #     if word[:-1] not in lib:
-                #         lib.add(word[:-1])
-
-
-        # print('report:', ori_text)
-
-def find_best_paragraph(study_ids = None):
-    path_all = '/home/xinyue/dataset/mimic/mimic_all.csv'
-    df_all = pd.read_csv(path_all)
-    if study_ids is None:
-        study_ids = df_all['study_id'].values
-
-
-    forbidden_words = ['WET READ', 'INDICATION','EXAM','COMPARISON', 'HISTORY']
-
-    for study_id in tqdm(study_ids):
-        subject_id = df_all[df_all['study_id'] == study_id]['subject_id'].values[0]
-
-        path = '/home/xinyue/dataset/mimic_reports'
-        fold1 = 'p' + str(subject_id)[:2]
-        fold2 = 'p' + str(subject_id)
-        file_name = 's%s.txt' % str(study_id)
-        file_path = os.path.join(path, fold1, fold2, file_name)
-        with open(file_path, 'r') as f:
-            ori_text = f.read()
-
-        print('\nstudy_id:', study_id)
-        # 1. find FINDINGS if it exists
-        if 'FINDINGS:' in ori_text:
-            text = ori_text[ori_text.find('FINDINGS:'):]
-            print('report:', text)
-            print('==============')
-        else:
-            # 2. find the longest paragraph. First, sort it by length
-            paragraphs = ori_text.replace('\n \n','\n\n').split('\n\n')
-            paragraphs = sorted(paragraphs, key=len)
-
-            while len(paragraphs)>1:
-                # 3. rule out the paragraph with forbidden words
-                if check_any_in(forbidden_words,paragraphs[-1]):
-                    paragraphs.pop()
-                    continue
-                output_report = paragraphs[-1]
-                # 4. add IMPRESSION if it exists
-                if 'IMPRESSION' in ori_text and 'IMPRESSION' not in paragraphs[-1]:
-                    impression = ori_text[ori_text.find('IMPRESSION:'):]
-                    if output_report in impression:
-                        output_report = impression
-                    elif impression in output_report:
-                        pass
-                    else:
-                        output_report = output_report + '\n' + impression
-
-
-                print('report:', output_report)
-                print('==============')
-                print('original report:', ori_text)
-                print('==============')
-
-                break
-            if len(paragraphs) <= 1:
-                pass
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json_path", type=str, default='data/all_diseases_final.json', help="path to the all key information json")
+    parser.add_argument("--json_path", type=str, default='data/all_diseases.json', help="path to the all key information json")
     args = parser.parse_args()
 
     question_gen(args.json_path, less_yes_no=False, small_sample=False, filter_low_freq=True) # generate question csv
@@ -1638,7 +1037,6 @@ def main():
 
 if __name__=='__main__':
     main()
-
 
 
 

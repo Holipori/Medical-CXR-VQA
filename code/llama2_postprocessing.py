@@ -848,7 +848,7 @@ def filter_terms(data, entity_dict, location_dict, level_dict, type_dict):
                                     data[i][cat][name]['type'] = cache
                         else:
                             data[i][cat][name]['type'] = None
-def standarize_format(input_path = "output/all_diseases_fu_2.json", output_path = 'output/all_diseases_final.json'):
+def standarize_format(input_path = "output/all_diseases_fu_2.json", output_path = 'output/all_diseases.json'):
     # load the data
     with open(input_path, 'r') as f:
         data = json.load(f)
@@ -856,13 +856,13 @@ def standarize_format(input_path = "output/all_diseases_fu_2.json", output_path 
 
 
     # load the dict
-    with open('data/entity_dict.json', 'r') as f:
+    with open('libs/entity_dict.json', 'r') as f:
         entity_dict = json.load(f)
-    with open('data/location_dict.json', 'r') as f:
+    with open('libs/location_dict.json', 'r') as f:
         location_dict = json.load(f)
-    with open('data/level_dict.json', 'r') as f:
+    with open('libs/level_dict.json', 'r') as f:
         level_dict = json.load(f)
-    with open('data/type_dict.json', 'r') as f:
+    with open('libs/type_dict.json', 'r') as f:
         type_dict = json.load(f)
 
     # save dict to csv
@@ -933,7 +933,7 @@ def standarize_format(input_path = "output/all_diseases_fu_2.json", output_path 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_path', default="output/all_diseases_fu_2.json", type=str)
-    parser.add_argument('--output_path', default='output/all_diseases_final.json', type=str)
+    parser.add_argument('--output_path', default='output/all_diseases.json', type=str)
     args = parser.parse_args()
 
     standarize_format(input_path = args.input_path, output_path = args.output_path)
