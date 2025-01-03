@@ -130,7 +130,9 @@ deepspeed --num_gpus 6 --master_port=9901 src/train_bash.py \
 ```
 
 - --dataset: the dataset name defined in Step 2 `dataset_info.json`
-- --num_gpus: the number of GPUs used for finetuning.
+- --num_gpus: the number of GPUs used for fine-tuning.
+
+Here, we provide our fine-tuned Llama2 checkpoint at this link: [llama_finetune_gpt4_100](https://drive.google.com/file/d/1ZxsOm4La6Mp6EesXzN9xlg2GjXrq-pZr/view?usp=sharing). Please unzip it before using.
 
 ### 4. combine the fine-tuned model with the original model using the following command: (need to change the model path)
 ```angular2html
