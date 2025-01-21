@@ -6,7 +6,7 @@ For more information about the dataset and the method, please refer to our [pape
 
 For the **code** of our multi-modal relationship graph learning method, please refer to [MMRGL](https://github.com/Holipori/MMRGL) .
 
-**The Medical-CXR-VQA dataset is currently under review in Physionet. We will attach the link once it's available.**
+The **Medical-CXR-VQA** dataset is now available on [Physionet](https://physionet.org/content/medical-cxr-vqa-dataset/1.0.0/)
 
 # Data
 
